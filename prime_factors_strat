@@ -1,0 +1,33 @@
+import copy
+#Try to solve the target by using a method around prime factos (only run if bot thinks it is possible)
+#(should only really be used if there are about 3 different factors)
+
+class Strat:
+    def __init__(self,prime_factors:dict,target:int,given_numbers:list) -> None:
+        self.target = target
+        self.prime_factors = prime_factors
+        self.given_numbers = given_numbers
+
+    def direct_strat(self):
+        #make a copy
+        given = copy.deepcopy(self.given_numbers)
+        wanted = []
+        used = []
+        #The most direct stategy:
+        '''
+        See if multiples of the prime factors can be made/prime factors themselves 
+        e.g: 2^2 = 4. Need to use/make a 4
+        '''
+        for factor in self.prime_factors:
+            to_achieve = factor**self.prime_factors[factor]
+            wanted.append(to_achieve)
+
+        for factor in wanted:
+            if factor in given:
+                given.remove(factor) #if we already have the number, use it
+                used.append(factor)
+            else:
+                #
+
+
+
