@@ -19,6 +19,7 @@ class MathsBot:
         #make prime factor tree
         self.prime_factor_tree = Create_prime_factor_tree.Tree(root_value= self.target)
         self.prime_factor_tree.make_tree()
+        self.prime_factors = self.prime_factor_tree.collect_prime_factors()
 
 
 
@@ -62,4 +63,4 @@ if __name__ == "__main__":
     target = int(input("What is the target? "))
     maths_bot = MathsBot(target,num_list)
 
-    print(maths_bot.prime_factor_tree.collect_prime_factors())
+    print(maths_bot.prime_factors)
