@@ -80,13 +80,8 @@ class MathsBot:
 
     def main(self):
         #start with trying to brute force
-        bf = BruteForce(self.num_list,self.target)
-        expressions_to_check = bf.populate_valid_skeletons()
-
-        print("Now evaluating expressions")
-        for expression in expressions_to_check:
-            self.eval_rpn(expression)
-        self.display_answer()
+        bf = BruteForce(self.target,self.num_list)
+        bf.populate_valid_skeletons()
 
 
 
@@ -94,23 +89,44 @@ class MathsBot:
         print(f"Answer: {self.current_answer['answer']}")
         print(f"Expression = {self.current_answer['expression']}") #TODO format into PEMDAS (individual lines)
         print(time.time() - start)
+        #Nice display 
+        print("------------------------")
+        self.rpn_for_nice_display(self.current_answer['expression'])
 
+    def rpn_for_nice_display(self,expression):
+        #much simpler as no need to validate anything (already done)
+        stack = []
+        for item in expression:
+            if item not in self.operations:
+                stack.append(item)
+            else:
+                first = stack.pop()
+                second = stack.pop()
+                
+                #perform operation
+                match item:
+                    case "+":
+                        ans = first + second
+                    case "-":
+                        ans = first - second 
+                    case "*":
+                        ans = first * second 
+                    case "/":
+                        ans = first / second 
+                print(f"{first}{item}{second} = {ans}")
+                stack.append(ans)
 
-class BruteForce:
-    def __init__(self,numbers:list,target:int):
-        self.numbers = numbers
-        self.target = target 
-
-        self.operators = ["+","-","/","*"]
+class BruteForce(MathsBot):
+    def __init__(self,target,numbers):
+        super().__init__(target,numbers)
 
 
     def populate_valid_skeletons(self):
         sk = Skeletons()
         skeletons = sk.parse_for_valid_skeletons()
-        expressions = []
         #Iterate over different combinations of operators
-        operator_combinations = set(itertools.combinations(self.operators*5,5))
-        number_permutations = set(itertools.permutations(self.numbers,6))
+        operator_combinations = set(itertools.combinations(self.operations*5,5))
+        number_permutations = set(itertools.permutations(self.num_list,6))
         print("permuatations and combinations complete")
         print(f"Skeleton = {len(skeletons)}")
         print(f"Operands = {len(operator_combinations)}")
@@ -130,8 +146,8 @@ class BruteForce:
                             populated.append(number_sequence[numbers_index_counter])
                             numbers_index_counter +=1
                     #Now populated
-                    expressions.append(populated)
-        return expressions
+                    self.eval_rpn(populated)
+        
 
 
 
