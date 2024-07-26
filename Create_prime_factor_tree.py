@@ -81,7 +81,6 @@ class Tree:
         run = True
         while run:
             factor = self.find_prime_factor(number)
-            print(f"current factor = {factor}")
             if factor is not None: 
                 current_node.update_left(Node(factor,None,None,number)) #add factor to the left
                 #add next node to the right
@@ -94,13 +93,13 @@ class Tree:
                 #found final prime
                 current_node.value = number
                 #Complete
-                break 
+                run = False 
 
 
 
 
 if __name__ == "__main__":
-    tree = Tree(9999999999999)
+    tree = Tree(6789)
     tree.make_tree()
     print(tree.collect_prime_factors())
 
