@@ -2,6 +2,10 @@ import itertools
 import more_itertools
 import sys
 import time
+from numba import jit
+
+
+
 #import Create_prime_factor_tree
 #import prime_factors_strat
 
@@ -19,8 +23,6 @@ class MathsBot:
         self.target = target 
         self.num_list = num_list #0-5 index
         self.operations = ["+","-","*","/"]
-        self.current_answer = {"answer":0,
-                        "expression": [0]}
 
 
         '''#make prime factor tree
@@ -29,69 +31,80 @@ class MathsBot:
         self.prime_factors = self.prime_factor_tree.collect_prime_factors()'''
 
 
-
-    def eval_rpn(self,expression):
-        stack = []
-        used_expression = []
-        for item in expression:
-            used_expression.append(item)
-            if item not in self.operations: #is a number 
-                stack.append(int(item)) #push to stack
-            else: #have an operation to pop appropriate items from stack and push back
-                if len(stack) >=2: #avoid stack underflow
-                    first = stack.pop()
-                    second = stack.pop()
-                    
-                    #perform operation
-                    match item:
-                        case "+":
-                            ans = first + second
-                        case "-":
-                            ans = first - second 
-                            if ans <0:
-                                return False #breaks rules of countdown
-                        case "*":
-                            ans = first * second 
-                        case "/":
-                            try:
-                                ans = first / second 
-                            except ZeroDivisionError:
-                                return False #avoid division by 0
-                            if ans % 1 !=0: #not an integer division (breaks rules of countdown):
-                                return False
-                    #push answer to stack
-                    stack.append(ans) 
-                    if self.compare_answer_with_target(ans,used_expression) is True:
-                        self.display_answer()
-                        sys.exit() #terminate
-                else: #stack underflow so expression not valid 
-                    return False 
-        return None
-
-
-    def compare_answer_with_target(self,answer,expression):
-        if abs(self.target - answer) < abs(self.target - self.current_answer["answer"]): #is closer
-            self.current_answer["answer"] = answer 
-            self.current_answer["expression"] = expression 
+    @jit(forceobj = True)
+    def eval_rpn(self,expressions,target):
         
-        if self.current_answer['answer'] == self.target:
-            return True
-        return False
+        current_answer = {"answer":0,
+                        "expression": [0]}
+        
+        #define function here for GPU use
+        def compare_answer_with_target(answer,expression,current_answer):
+            if abs(target - answer) < abs(target - current_answer["answer"]): #is closer
+                current_answer["answer"] = answer 
+                current_answer["expression"] = expression 
+            
+            if current_answer['answer'] == target:
+                return True
+            return False
 
+        
+        for expression in expressions:
+            stack = []
+            used_expression = []
+            for item in expression:
+                used_expression.append(item)
+                if item not in self.operations: #is a number 
+                    stack.append(int(item)) #push to stack
+                else: #have an operation to pop appropriate items from stack and push back
+                    if len(stack) >=2: #avoid stack underflow
+                        first = stack.pop()
+                        second = stack.pop()
+                        
+                        #perform operation
+                        match item:
+                            case "+":
+                                ans = first + second
+                            case "-":
+                                ans = first - second 
+                                if ans <0:
+                                    return False #breaks rules of countdown
+                            case "*":
+                                ans = first * second 
+                            case "/":
+                                try:
+                                    ans = first / second 
+                                except ZeroDivisionError:
+                                    return False #avoid division by 0
+                                if ans % 1 !=0: #not an integer division (breaks rules of countdown):
+                                    return False
+                        #push answer to stack
+                        stack.append(ans) 
+                        if compare_answer_with_target(ans,used_expression,current_answer) is True:
+                            return current_answer
+        return current_answer
+
+
+    
     def main(self):
         #start with trying to brute force
         bf = BruteForce(self.target,self.num_list)
-        bf.populate_valid_skeletons()
+        sk = Skeletons()
+        op_combinations = set(itertools.combinations(self.operations*5,5))
+        num_list_perms = set(itertools.permutations(self.num_list,6))
+        templates = sk.parse_for_valid_skeletons()
+        answer_dict = bf.populate_valid_skeletons(op_combinations,num_list_perms,templates)
+        self.display_answer(answer_dict)
 
 
 
-    def display_answer(self):
-        print(f"Answer: {self.current_answer['answer']}")
-        print(f"Expression = {self.current_answer['expression']}") #TODO format into PEMDAS (individual lines)
+
+    def display_answer(self,current_answer):
+        print(f"Answer: {current_answer['answer']}")
+        print(f"Expression = {current_answer['expression']}") 
         print(time.time() - start)
         #Nice display 
         print("------------------------")
-        self.rpn_for_nice_display(self.current_answer['expression'])
+        self.rpn_for_nice_display(current_answer['expression'])
 
     def rpn_for_nice_display(self,expression):
         #much simpler as no need to validate anything (already done)
@@ -121,16 +134,11 @@ class BruteForce(MathsBot):
         super().__init__(target,numbers)
 
 
-    def populate_valid_skeletons(self):
-        sk = Skeletons()
-        skeletons = sk.parse_for_valid_skeletons()
+    @jit( forceobj = True) #optimise for GPU use
+    def populate_valid_skeletons(self,operator_combinations,number_permutations,skeletons):
+        all_expressions = [] #store all checked expressions
         #Iterate over different combinations of operators
-        operator_combinations = set(itertools.combinations(self.operations*5,5))
-        number_permutations = set(itertools.permutations(self.num_list,6))
-        print("permuatations and combinations complete")
-        print(f"Skeleton = {len(skeletons)}")
-        print(f"Operands = {len(operator_combinations)}")
-        print(f"Number perms = {len(number_permutations)}")
+        print("running")
         for skeleton in skeletons:
             for operator_sequence in operator_combinations:
                 for number_sequence in number_permutations:
@@ -146,16 +154,26 @@ class BruteForce(MathsBot):
                             populated.append(number_sequence[numbers_index_counter])
                             numbers_index_counter +=1
                     #Now populated
-                    self.eval_rpn(populated)
-        
+                    #self.eval_rpn(populated)
+                    all_expressions.append(populated)
+        #Find best answer
+        print("Evaluating")
+        answer_dict = self.eval_rpn(all_expressions)
+        return answer_dict #returns current_answer dictionary
 
+
+
+
+
+    '''def remove_communicative_expressions(self,expression,previous_expressions):
+        #To avoid running unnessary checks on an expression that is similar to a previous solution.
+        #e.g if done 2,1,+. There is no need to do 1,2+ as the answer to that is the same'''
 
 
 class Skeletons:
-
     def generate_valid_expression_skeletons(self):
         #Generate the skeletons for valid expressions to improve computation (reduce number of nessicary perms)
-        #NOTE This function only needs to be run once to generate the perm file that can then be used
+
         skel_nums = [1 for x in range(6)]
         skel_operators = [0 for x in range(5)]
 
