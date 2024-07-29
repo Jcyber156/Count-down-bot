@@ -1,6 +1,6 @@
 import time
 import itertools
-from Brute_force import Skeletons
+
 from multiprocessing import Pool
 
 #https://cdn.discordapp.com/attachments/690290111115821087/1266333275065028679/image.png?ex=66a76744&is=66a615c4&hm=e5291921320476b65c7c82059db9d74664e7c2445c5ea801fa32bac80b31f820&
@@ -46,8 +46,10 @@ if __name__ == "__main__":
     target = int(input("What is the target? "))
 
 
-    sk = Skeletons()
-    templates = sk.parse_for_valid_skeletons()
+    templates = []
+    with open("valid_expressions.txt","r") as f:
+        for i in f.readlines():
+            templates.append(tuple(map(int,i.strip())))
 
 
     #Multi-threading logic
