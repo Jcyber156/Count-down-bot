@@ -64,6 +64,11 @@ class Skeletons:
             #Only expressionss that could follow RPN rules
             if self.validate_permutation(perm) is True:
                 valid.append(perm)
+        with open("valid_expressions.txt","w") as f:
+            for i in valid:
+                to_write = str(i).replace(", ","")
+                to_write = to_write.strip("()")
+                f.write(to_write+"\n")
         return valid
 
     def validate_permutation(self,perm):
