@@ -2,7 +2,7 @@ import itertools
 import more_itertools
 import sys
 import time
-from numba import jit
+import cuda
 
 
 
@@ -31,7 +31,7 @@ class MathsBot:
         self.prime_factors = self.prime_factor_tree.collect_prime_factors()'''
 
 
-    @jit(forceobj = True)
+    @cuda.jit(forceobj = True)
     def eval_rpn(self,expressions,target):
         
         current_answer = {"answer":0,
@@ -134,7 +134,6 @@ class BruteForce(MathsBot):
         super().__init__(target,numbers)
 
 
-    @jit( forceobj = True) #optimise for GPU use
     def populate_valid_skeletons(self,operator_combinations,number_permutations,skeletons):
         all_expressions = [] #store all checked expressions
         #Iterate over different combinations of operators
