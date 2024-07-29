@@ -1,19 +1,19 @@
 import time
 import itertools
 from Brute_force import Skeletons
-from multiprocessing import Process,Array,Manager
+from multiprocessing import Pool
 
 #https://cdn.discordapp.com/attachments/690290111115821087/1266333275065028679/image.png?ex=66a76744&is=66a615c4&hm=e5291921320476b65c7c82059db9d74664e7c2445c5ea801fa32bac80b31f820&
 #Test data
+global results
+results = []
 
-
-
-def populate_valid_skeletons(operator_combinations,number_permutations,skeletons,expressions,template_segment:list)-> list:
+def populate_valid_skeletons(templates,operator_combinations,number_permutations)-> list:
     #Iterate over different combinations of operators
-    skeletons = skeletons[template_segment[0]:template_segment[1]]
+    expressions = []
 
 
-    for skeleton in skeletons:
+    for skeleton in templates:
         for operator_sequence in operator_combinations:
             for number_sequence in number_permutations:
                 populated = []
@@ -33,6 +33,11 @@ def populate_valid_skeletons(operator_combinations,number_permutations,skeletons
 
 
 
+def get_results(results_i):
+    results.append(results_i)
+
+
+
 if __name__ == "__main__":
     num_list  = []
     num_list+= str(input("Enter numbers (seperated by a space): ")).split(" ")
@@ -42,30 +47,20 @@ if __name__ == "__main__":
 
 
     sk = Skeletons()
-    op_combinations = set(itertools.combinations(["+","-","*","/"]*5,5))
-    num_list_perms = set(itertools.permutations(num_list,6))
     templates = sk.parse_for_valid_skeletons()
 
 
-    #Mutli-threading logic
-    manager = Manager()
-    return_dict = manager.dict()
-    #so all threads can acces
-    array_size = len(templates)*len(op_combinations)*len(num_list_perms)
-
+    #Multi-threading logic
+    p = Pool(processes = 14)
     
-    processes = []
-    global expressions
-    expressions = []
-    for num in range(7):
-        a = Process(target=populate_valid_skeletons,args=(op_combinations,num_list_perms,templates,expressions,[num*6,(num+1)*6]))
-        processes.append(a)
-        a.start()
+    operator_combinations = set(itertools.combinations(["+","-","*","/"]*5,5))
+    number_permutations= set(itertools.permutations(num_list,6))
 
-#Once complete join results
-    for job in processes:
-        job.join()
+    start = time.time()
+    for i in range(14):
+        p.apply_async(populate_valid_skeletons,args=(templates[i*3:(i+1)*3],operator_combinations,number_permutations),callback=get_results)
+    p.close()
+    p.join()
 
-
-    print("Complete")
-    print(len(expressions))
+    print(time.time()-start)
+    #RESULTS APPENED AND ACCESSED CORRECTLY WHOOOOOOOOOOOHOOOOOOOO
